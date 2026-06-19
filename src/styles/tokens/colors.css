@@ -1,0 +1,95 @@
+/* SDC Donut Presale — Color tokens
+   Anchor: SDC institutional blue (#0C53A0) for trust.
+   Candy accents (strawberry / grape / honey) for the donut campaign. */
+
+:root {
+  /* ---- Brand blue (institutional, trust) ---- */
+  --blue-900: #062F5C;
+  --blue-800: #0A4480;
+  --blue-700: #0C53A0; /* SDC logo blue */
+  --blue-600: #1A66BC;
+  --blue-500: #2E7BD6;
+  --blue-300: #8FBEEC;
+  --blue-200: #C3DDF6;
+  --blue-100: #E3EFFB;
+  --blue-50:  #F2F8FE;
+
+  /* ---- Candy accents (donut campaign) ---- */
+  --strawberry-600: #F2628F; /* strawberry glaze */
+  --strawberry-500: #FF7AA2;
+  --strawberry-200: #FFC4D5;
+  --strawberry-100: #FFE4ED;
+
+  --grape-600: #574FE0;      /* blueberry / grape */
+  --grape-500: #6C63FF;
+  --grape-200: #CFCBFF;
+  --grape-100: #E8E6FF;
+
+  --honey-500: #FFC233;      /* honey / lemon glaze */
+  --honey-400: #FFD23E;
+  --honey-200: #FFE79C;
+  --honey-100: #FFF3CC;
+
+  /* ---- Neutrals (warm-cool ink) ---- */
+  --ink-900: #1C2230;
+  --ink-800: #2A3142;
+  --ink-700: #3A4252;
+  --ink-600: #4C566A;
+  --ink-500: #5E6878;
+  --ink-400: #8A93A3;
+  --ink-300: #C3CAD6;
+  --ink-200: #E3E7EE;
+  --ink-100: #F1F4F8;
+  --white:   #FFFFFF;
+  --cream:   #FFFBF5; /* warm page background */
+
+  /* ---- Semantic feedback ---- */
+  --success-600: #178A5C;
+  --success-500: #1FA971;
+  --success-100: #E4F7EF;
+  --warning-600: #C77908;
+  --warning-500: #E8920C;
+  --warning-100: #FDF1DC;
+  --danger-600:  #C73A33;
+  --danger-500:  #E0463E;
+  --danger-100:  #FCE6E5;
+
+  /* ===========================================================
+     SEMANTIC ALIASES — prefer these in components
+     =========================================================== */
+  --brand:            var(--blue-700);
+  --brand-strong:     var(--blue-900);
+  --brand-hover:      var(--blue-800);
+  --brand-soft:       var(--blue-100);
+  --brand-tint:       var(--blue-50);
+
+  --accent-strawberry: var(--strawberry-500);
+  --accent-grape:      var(--grape-500);
+  --accent-honey:      var(--honey-400);
+
+  --text-strong:   var(--ink-900);
+  --text-body:     var(--ink-700);
+  --text-muted:    var(--ink-500);
+  --text-faint:    var(--ink-400);
+  --text-on-brand: var(--white);
+  --text-link:     var(--blue-700);
+
+  --surface-page:   var(--cream);
+  --surface-card:   var(--white);
+  --surface-subtle: var(--blue-50);
+  --surface-sunken: var(--ink-100);
+  --surface-brand:  var(--blue-700);
+
+  --border-soft:   var(--ink-200);
+  --border-strong: var(--ink-300);
+  --border-brand:  var(--blue-200);
+
+  --focus-ring: var(--blue-500);
+
+  --progress-track: var(--ink-200);
+  --progress-fill:  var(--strawberry-500);
+
+  --success: var(--success-500);
+  --warning: var(--warning-500);
+  --danger:  var(--danger-500);
+}

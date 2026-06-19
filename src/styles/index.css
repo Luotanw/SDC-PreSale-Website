@@ -1,0 +1,46 @@
+/* SDC Donut Presale — global stylesheet (consumers import this one file). */
+
+@import "./tokens/fonts.css";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--surface-page);
+  color: var(--text-body);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--text-link);
+}
+
+/* Single-column collapse below 860px. */
+@media (max-width: 860px) {
+  .hero-grid,
+  .cause-grid,
+  .product-grid,
+  .order-grid,
+  .pickup-grid,
+  .footer-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .site-nav {
+    display: none !important;
+  }
+}

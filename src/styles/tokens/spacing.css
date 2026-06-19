@@ -1,0 +1,51 @@
+/* SDC Donut Presale — Spacing, radii, shadows, layout */
+
+:root {
+  /* ---- Spacing scale (4px base) ---- */
+  --space-0:  0;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-32: 128px;
+
+  /* ---- Corner radii (rounded, friendly) ---- */
+  --radius-xs:   6px;
+  --radius-sm:   10px;
+  --radius-md:   16px;
+  --radius-lg:   22px;
+  --radius-xl:   30px;
+  --radius-2xl:  40px;
+  --radius-pill: 999px;
+
+  /* ---- Shadows (soft, warm, low-contrast) ---- */
+  --shadow-xs: 0 1px 2px rgba(28, 34, 48, 0.06);
+  --shadow-sm: 0 2px 8px rgba(28, 34, 48, 0.08);
+  --shadow-md: 0 8px 24px rgba(28, 34, 48, 0.10);
+  --shadow-lg: 0 18px 48px rgba(28, 34, 48, 0.14);
+  --shadow-brand: 0 14px 30px rgba(12, 83, 160, 0.24);
+  --shadow-candy: 0 14px 30px rgba(255, 122, 162, 0.30);
+
+  /* ---- Borders ---- */
+  --border-width: 1.5px;
+
+  /* ---- Layout ---- */
+  --container-max: 1140px;
+  --container-narrow: 720px;
+  --gutter: var(--space-6);
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 360ms;
+}

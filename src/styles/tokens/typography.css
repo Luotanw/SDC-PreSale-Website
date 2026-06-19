@@ -1,0 +1,49 @@
+/* SDC Donut Presale — Typography tokens */
+
+:root {
+  /* ---- Families ---- */
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif; /* same family, heavy weights */
+
+  /* ---- Type scale (1.25-ish, friendly) ---- */
+  --text-xs:   12px;
+  --text-sm:   14px;
+  --text-base: 16px;
+  --text-md:   18px;
+  --text-lg:   20px;
+  --text-xl:   24px;
+  --text-2xl:  30px;
+  --text-3xl:  38px;
+  --text-4xl:  48px;
+  --text-5xl:  60px;
+  --text-6xl:  76px;
+
+  /* ---- Weights ---- */
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-extra:    800;
+
+  /* ---- Line heights ---- */
+  --leading-tight:   1.08;
+  --leading-snug:    1.22;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.65;
+
+  /* ---- Letter spacing ---- */
+  --tracking-tight:  -0.02em;
+  --tracking-snug:   -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide:   0.04em;
+  --tracking-caps:   0.08em; /* eyebrows / overlines */
+
+  /* ---- Semantic roles ---- */
+  --font-hero:    var(--weight-extra) var(--text-6xl)/var(--leading-tight) var(--font-display);
+  --font-display-1: var(--weight-extra) var(--text-4xl)/var(--leading-tight) var(--font-display);
+  --font-heading: var(--weight-bold) var(--text-2xl)/var(--leading-snug) var(--font-sans);
+  --font-subhead: var(--weight-semibold) var(--text-lg)/var(--leading-snug) var(--font-sans);
+  --font-body:    var(--weight-regular) var(--text-base)/var(--leading-normal) var(--font-sans);
+  --font-small:   var(--weight-medium) var(--text-sm)/var(--leading-normal) var(--font-sans);
+  --font-eyebrow: var(--weight-bold) var(--text-sm)/1 var(--font-sans);
+}
