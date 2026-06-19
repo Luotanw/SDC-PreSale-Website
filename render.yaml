@@ -1,0 +1,23 @@
+# Render Blueprint for the SDC Donut Presale site.
+# One Node web service that builds the React frontend and serves it together
+# with the order API (server/index.js). Orders are written to a CSV on a
+# persistent disk so they survive restarts and redeploys.
+#
+# Deploy: push this repo to GitHub, then in Render choose
+# "New > Blueprint" and point it at the repo.
+services:
+  - type: web
+    name: sdc-donut-presale
+    runtime: node
+    # A persistent disk requires a paid instance type (free tier has no disk).
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: node server/index.js
+    envVars:
+      # Save orders onto the persistent disk, not the ephemeral container fs.
+      - key: ORDERS_CSV
+        value: /var/data/orders.csv
+    disk:
+      name: orders-data
+      mountPath: /var/data
+      sizeGB: 1

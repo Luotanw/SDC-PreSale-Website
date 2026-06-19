@@ -45,6 +45,15 @@ function csvEscape(value) {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+// Make sure the CSV exists with its header row before we serve traffic. On a
+// fresh deploy the persistent disk starts empty, so this creates the file (and
+// its parent directory) up front rather than waiting for the first order.
+function ensureCsvInitialized() {
+  if (fs.existsSync(CSV_PATH)) return;
+  fs.mkdirSync(path.dirname(CSV_PATH), { recursive: true });
+  fs.writeFileSync(CSV_PATH, FIELDS.join(",") + "\n", "utf8");
+}
+
 function appendOrder(order) {
   const fileExists = fs.existsSync(CSV_PATH);
   const rows = [];
@@ -213,6 +222,8 @@ if (fs.existsSync(distDir)) {
   app.use(express.static(distDir));
   app.get("*", (_req, res) => res.sendFile(path.join(distDir, "index.html")));
 }
+
+ensureCsvInitialized();
 
 app.listen(PORT, () => {
   console.log(`SDC order server listening on http://localhost:${PORT}`);

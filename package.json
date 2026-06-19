@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "description": "SDC charity donut presale — single-page reservation site (Vite + React) with a local order-to-CSV server.",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "concurrently -k -n web,api -c blue,magenta \"vite\" \"node server/index.js\"",
     "server": "node server/index.js",
