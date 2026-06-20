@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { createApp } from "../server/app.js";
 import {
+  checkCaptchaConfig,
   createEditToken,
   verifyEditToken,
 } from "../server/security.js";
@@ -146,6 +147,51 @@ test("updates require the signed edit token", async () => {
     assert.equal(updated.total, 3 * PRICE_PER_DOZEN);
     assert.equal(store.orders.get(created.id).name, "Updated");
   });
+});
+
+test("CAPTCHA is optional but must not be half-configured", () => {
+  const silent = { warn() {} };
+
+  // A half-config (one key without the other) is broken either way → throw.
+  assert.throws(
+    () =>
+      checkCaptchaConfig(
+        { NODE_ENV: "production", VITE_TURNSTILE_SITE_KEY: "site-only" },
+        silent
+      ),
+    /half-configured/
+  );
+  assert.throws(
+    () =>
+      checkCaptchaConfig(
+        { NODE_ENV: "production", TURNSTILE_SECRET_KEY: "secret-only" },
+        silent
+      ),
+    /half-configured/
+  );
+
+  // Both keys set → enforced, no warning.
+  const enabled = [];
+  checkCaptchaConfig(
+    {
+      NODE_ENV: "production",
+      TURNSTILE_SECRET_KEY: "secret",
+      VITE_TURNSTILE_SITE_KEY: "site",
+    },
+    { warn: (m) => enabled.push(m) }
+  );
+  assert.equal(enabled.length, 0);
+
+  // Neither set in production → allowed, but warns loudly (not silent).
+  const warnings = [];
+  checkCaptchaConfig({ NODE_ENV: "production" }, { warn: (m) => warnings.push(m) });
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /bot protection is DISABLED/);
+
+  // Neither set outside production → allowed and quiet.
+  const devWarnings = [];
+  checkCaptchaConfig({ NODE_ENV: "development" }, { warn: (m) => devWarnings.push(m) });
+  assert.equal(devWarnings.length, 0);
 });
 
 test("edit tokens are bound to one order id", () => {

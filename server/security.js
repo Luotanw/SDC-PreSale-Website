@@ -21,6 +21,38 @@ export function resolveEditSecret(env = process.env) {
   return developmentEditSecret;
 }
 
+// Validate the Turnstile (bot-protection) configuration at startup. CAPTCHA is
+// optional, but the two halves must agree:
+//   • both keys set    → enforced (good).
+//   • neither set      → disabled. Allowed, but warn loudly in production so the
+//                        gap is visible rather than a silent fail-open.
+//   • exactly one set  → broken half-config: the frontend and server disagree
+//                        on whether a token is required, which either fakes
+//                        protection or rejects every order. Fail the boot.
+export function checkCaptchaConfig(env = process.env, logger = console) {
+  const hasSecret = Boolean(env.TURNSTILE_SECRET_KEY?.trim());
+  const hasSiteKey = Boolean(env.VITE_TURNSTILE_SITE_KEY?.trim());
+
+  if (hasSecret && hasSiteKey) return;
+
+  if (hasSecret !== hasSiteKey) {
+    const present = hasSecret ? "TURNSTILE_SECRET_KEY" : "VITE_TURNSTILE_SITE_KEY";
+    const missing = hasSecret ? "VITE_TURNSTILE_SITE_KEY" : "TURNSTILE_SECRET_KEY";
+    throw new Error(
+      `Turnstile is half-configured: ${present} is set but ${missing} is missing. ` +
+        "Set both to enable bot protection, or neither to disable it."
+    );
+  }
+
+  if (env.NODE_ENV === "production") {
+    logger.warn?.(
+      "[startup] WARNING: bot protection is DISABLED — orders are accepted " +
+        "without human verification. Set TURNSTILE_SECRET_KEY and " +
+        "VITE_TURNSTILE_SITE_KEY to enable Turnstile."
+    );
+  }
+}
+
 export function createEditToken(orderId, secret) {
   return createHmac("sha256", secret).update(orderId).digest("base64url");
 }

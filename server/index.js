@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createApp } from "./app.js";
-import { resolveEditSecret } from "./security.js";
+import { checkCaptchaConfig, resolveEditSecret } from "./security.js";
 import { store } from "./stores/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -15,6 +15,7 @@ const PORT = process.env.PORT || 3001;
 let editSecret;
 try {
   editSecret = resolveEditSecret();
+  checkCaptchaConfig();
 } catch (error) {
   console.error(`[startup] ${error.message}`);
   process.exitCode = 1;
