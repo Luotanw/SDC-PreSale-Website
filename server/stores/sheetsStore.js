@@ -14,6 +14,7 @@
 
 import { google } from "googleapis";
 import { FIELDS } from "../orderFields.js";
+import { parseStoredQuantity } from "../orderValidation.js";
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const TAB = process.env.GOOGLE_SHEET_TAB || "Orders";
@@ -25,7 +26,7 @@ const IMMUTABLE_FIELDS = new Set(["id", "timestamp"]);
 // it in every range string.
 const QTAB = `'${TAB.replace(/'/g, "''")}'`;
 
-export const description = `Google Sheet ${SHEET_ID} (tab "${TAB}")`;
+export const description = `Google Sheets tab "${TAB}"`;
 
 let sheetsApi;
 
@@ -192,8 +193,8 @@ export async function computeBoxesOrdered() {
     const qIndex = rows[0].indexOf("quantity");
     if (qIndex !== -1) {
       for (let i = 1; i < rows.length; i++) {
-        const n = parseInt(rows[i][qIndex], 10);
-        if (!Number.isNaN(n)) total += n;
+        const quantity = parseStoredQuantity(rows[i][qIndex]);
+        if (quantity !== null) total += quantity;
       }
     }
   }

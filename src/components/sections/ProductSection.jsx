@@ -1,5 +1,6 @@
 import React from "react";
 import { Card, Badge, Button, QuantityStepper, DonutGraphic, Icon } from "../ui";
+import { MAX_ORDER_QUANTITY } from "../../../shared/orderPolicy.js";
 
 // Product selector — Original Glazed dozen, qty, running total.
 export function ProductSection({ qty, setQty, price = 15, onAdd }) {
@@ -45,7 +46,7 @@ export function ProductSection({ qty, setQty, price = 15, onAdd }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginTop: "22px", flexWrap: "wrap" }}>
                 <div>
                   <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-caps)", marginBottom: "6px" }}>Quantity</div>
-                  <QuantityStepper value={qty} onChange={setQty} min={1} max={30} suffix="dozen" />
+                  <QuantityStepper value={qty} onChange={setQty} min={1} max={MAX_ORDER_QUANTITY} suffix="dozen" />
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-caps)" }}>Total</div>

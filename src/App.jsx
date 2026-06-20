@@ -7,9 +7,9 @@ import { OrderForm } from "./components/sections/OrderForm.jsx";
 import { PickupPayment } from "./components/sections/PickupPayment.jsx";
 import { SiteFooter } from "./components/sections/SiteFooter.jsx";
 import { fetchBoxesOrdered } from "./lib/submitOrder.js";
+import { PRICE_PER_DOZEN } from "../shared/orderPolicy.js";
 
 // Campaign config — swap these for your real numbers before launch.
-const PRICE_PER_DOZEN = 15;
 const GOAL_BOXES = 30;
 
 export default function App() {

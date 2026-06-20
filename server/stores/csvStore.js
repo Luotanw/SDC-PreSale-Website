@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { FIELDS } from "../orderFields.js";
+import { parseStoredQuantity } from "../orderValidation.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -16,11 +17,22 @@ const CSV_PATH = process.env.ORDERS_CSV
   ? path.resolve(process.env.ORDERS_CSV)
   : path.join(ROOT, "orders.csv");
 
-export const description = `CSV file (${CSV_PATH})`;
+export const description = "local CSV file";
+
+// Spreadsheet programs can execute cells beginning with formula characters,
+// even when the CSV itself is correctly quoted. Prefix those values with an
+// apostrophe so customer input is always imported as text.
+export function spreadsheetSafeValue(value) {
+  if (value == null) return "";
+  const stringValue = String(value);
+  return /^[\u0000-\u0020]*[=+\-@]/.test(stringValue)
+    ? `'${stringValue}`
+    : stringValue;
+}
 
 // Quote a value if it contains a comma, quote, or newline (RFC 4180).
 function csvEscape(value) {
-  const s = value == null ? "" : String(value);
+  const s = spreadsheetSafeValue(value);
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -71,15 +83,21 @@ function readRows() {
 
 function rewriteCsv(rows) {
   const out = rows.map((r) => r.map(csvEscape).join(",")).join("\n") + "\n";
-  fs.writeFileSync(CSV_PATH, out, "utf8");
+  fs.writeFileSync(CSV_PATH, out, { encoding: "utf8", mode: 0o600 });
+  fs.chmodSync(CSV_PATH, 0o600);
 }
 
 // Make sure the CSV exists with its header row before we serve traffic, so the
 // file is present even before the first order is placed.
 export async function init() {
-  if (fs.existsSync(CSV_PATH)) return;
-  fs.mkdirSync(path.dirname(CSV_PATH), { recursive: true });
-  fs.writeFileSync(CSV_PATH, FIELDS.join(",") + "\n", "utf8");
+  if (!fs.existsSync(CSV_PATH)) {
+    fs.mkdirSync(path.dirname(CSV_PATH), { recursive: true });
+    fs.writeFileSync(CSV_PATH, FIELDS.join(",") + "\n", {
+      encoding: "utf8",
+      mode: 0o600,
+    });
+  }
+  fs.chmodSync(CSV_PATH, 0o600);
 }
 
 export async function appendOrder(order) {
@@ -87,7 +105,11 @@ export async function appendOrder(order) {
   const rows = [];
   if (!fileExists) rows.push(FIELDS.join(",")); // header row, once
   rows.push(FIELDS.map((field) => csvEscape(order[field])).join(","));
-  fs.appendFileSync(CSV_PATH, rows.join("\n") + "\n", "utf8");
+  fs.appendFileSync(CSV_PATH, rows.join("\n") + "\n", {
+    encoding: "utf8",
+    mode: 0o600,
+  });
+  fs.chmodSync(CSV_PATH, 0o600);
 }
 
 // Replace the row whose id matches, keeping its original id + timestamp.
@@ -120,8 +142,8 @@ export async function computeBoxesOrdered() {
   if (qIndex === -1) return 0;
   let total = 0;
   for (let i = 1; i < rows.length; i++) {
-    const n = parseInt(rows[i][qIndex], 10);
-    if (!Number.isNaN(n)) total += n;
+    const quantity = parseStoredQuantity(rows[i][qIndex]);
+    if (quantity !== null) total += quantity;
   }
   return total;
 }

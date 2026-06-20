@@ -9,3 +9,4 @@ export { Select } from "./Select.jsx";
 export { QuantityStepper } from "./QuantityStepper.jsx";
 export { FieldLabel } from "./FieldLabel.jsx";
 export { Icon } from "./Icon.jsx";
+export { Turnstile } from "./Turnstile.jsx";

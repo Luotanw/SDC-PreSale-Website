@@ -1,5 +1,6 @@
 import React from "react";
 import { Button, Badge, DonutGraphic, Icon } from "../ui";
+import { PRICE_PER_DOZEN } from "../../../shared/orderPolicy.js";
 
 // Hero — fundraiser name, mission line, CTA, donut cluster.
 export function Hero({ onReserve }) {
@@ -66,7 +67,7 @@ export function Hero({ onReserve }) {
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "26px" }}>
           <Badge tone="brand"><Icon name="calendar-check" size={14} /> Pickup Sun, Jun 21</Badge>
-          <Badge tone="honey"><Icon name="badge-dollar-sign" size={14} /> $15 / dozen</Badge>
+          <Badge tone="honey"><Icon name="badge-dollar-sign" size={14} /> ${PRICE_PER_DOZEN} / dozen</Badge>
         </div>
       </div>
 
@@ -100,7 +101,7 @@ export function Hero({ onReserve }) {
           }}
         >
           <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-caps)" }}>Dozen</div>
-          <div style={{ fontSize: "var(--text-2xl)", fontWeight: 800, color: "var(--brand)", lineHeight: 1 }}>$15</div>
+          <div style={{ fontSize: "var(--text-2xl)", fontWeight: 800, color: "var(--brand)", lineHeight: 1 }}>${PRICE_PER_DOZEN}</div>
         </div>
       </div>
     </section>

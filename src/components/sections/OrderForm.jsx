@@ -1,23 +1,23 @@
 import React from "react";
-import { Card, Button, Input, Select, Textarea, FieldLabel, Badge, DonutGraphic, Icon } from "../ui";
+import { Card, Button, Input, Select, Textarea, FieldLabel, Badge, DonutGraphic, Icon, Turnstile } from "../ui";
 import { submitOrder } from "../../lib/submitOrder.js";
+import {
+  MAX_ORDER_QUANTITY,
+  PICKUP_WINDOWS,
+} from "../../../shared/orderPolicy.js";
 
-const PICKUP_WINDOWS = [
-  "10:00 AM – 11:00 AM",
-  "11:00 AM – 12:00 PM",
-  "12:00 PM – 1:00 PM",
-  "1:00 PM – 2:00 PM",
-  "2:00 PM – 3:00 PM",
-  "3:00 PM – 4:00 PM",
-];
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
-// Order form with inline confirmation state. Submits to a Google Form
-// (see src/lib/submitOrder.js + .env.example) and confirms optimistically.
+// Order form with inline confirmation state. The server validates and stores
+// the order before this component displays success.
 export function OrderForm({ qty, setQty, price = 15, onOrderPlaced }) {
   const [submitted, setSubmitted] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [orderId, setOrderId] = React.useState(null); // set once placed; edits update this order
+  const [editToken, setEditToken] = React.useState(null);
+  const [captchaToken, setCaptchaToken] = React.useState(null);
+  const [captchaResetKey, setCaptchaResetKey] = React.useState(0);
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
@@ -32,6 +32,10 @@ export function OrderForm({ qty, setQty, price = 15, onOrderPlaced }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!orderId && TURNSTILE_SITE_KEY && !captchaToken) {
+      setError("Please complete the human verification.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     // When orderId is set we're editing — update that order rather than adding one.
@@ -41,21 +45,24 @@ export function OrderForm({ qty, setQty, price = 15, onOrderPlaced }) {
         email,
         phone,
         quantity: qty,
-        price,
-        total,
         pickup,
         notes,
       },
-      orderId
+      { id: orderId, editToken, captchaToken }
     );
     setSubmitting(false);
     if (result.ok) {
       if (result.id) setOrderId(result.id);
+      if (result.editToken) setEditToken(result.editToken);
       setSubmitted(true);
       onOrderPlaced?.(); // refresh the live "boxes ordered" dashboard
       scrollToOrder();
     } else {
       setError(result.error || "Something went wrong saving your order. Please try again.");
+      if (!orderId && TURNSTILE_SITE_KEY) {
+        setCaptchaToken(null);
+        setCaptchaResetKey((key) => key + 1);
+      }
     }
   };
 
@@ -113,7 +120,7 @@ export function OrderForm({ qty, setQty, price = 15, onOrderPlaced }) {
               </FieldLabel>
               <FieldLabel label="Quantity" htmlFor="of-qty">
                 <Select id="of-qty" value={qty} onChange={(e) => setQty(Number(e.target.value))}>
-                  {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                  {Array.from({ length: MAX_ORDER_QUANTITY }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>{n} dozen — ${n * price}</option>
                   ))}
                 </Select>
@@ -131,7 +138,24 @@ export function OrderForm({ qty, setQty, price = 15, onOrderPlaced }) {
                 </FieldLabel>
               </div>
             </div>
-            <Button type="submit" variant="candy" size="lg" fullWidth disabled={submitting} style={{ marginTop: "24px" }} iconRight={submitting ? null : <Icon name="arrow-right" size={18} />}>
+            {!orderId && TURNSTILE_SITE_KEY && (
+              <div style={{ marginTop: "20px" }}>
+                <Turnstile
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onToken={setCaptchaToken}
+                  resetKey={captchaResetKey}
+                />
+              </div>
+            )}
+            <Button
+              type="submit"
+              variant="candy"
+              size="lg"
+              fullWidth
+              disabled={submitting || (!orderId && TURNSTILE_SITE_KEY && !captchaToken)}
+              style={{ marginTop: "24px" }}
+              iconRight={submitting ? null : <Icon name="arrow-right" size={18} />}
+            >
               {submitting
                 ? orderId ? "Saving…" : "Reserving…"
                 : orderId ? `Update my order · $${total}` : `Reserve ${qty} dozen · $${total}`}

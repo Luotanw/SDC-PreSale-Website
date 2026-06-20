@@ -11,9 +11,22 @@ services:
     name: sdc-donut-presale
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
     startCommand: node server/index.js
     envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      # At least 32 random characters. Used to sign private order-edit tokens.
+      - key: ORDER_EDIT_SECRET
+        generateValue: true
+      # Cloudflare Turnstile secret and public site key. Configure the Render
+      # hostname in Turnstile before deploying.
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
+      - key: VITE_TURNSTILE_SITE_KEY
+        sync: false
       # The spreadsheet id (the long token in the sheet's URL).
       - key: GOOGLE_SHEET_ID
         sync: false
