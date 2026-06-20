@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "concurrently -k -n web,api -c blue,magenta \"vite\" \"node server/index.js\"",
     "server": "node server/index.js",
+    "test": "node --test",
     "build": "vite build",
     "start": "vite build && node server/index.js",
     "preview": "vite preview"

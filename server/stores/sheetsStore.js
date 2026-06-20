@@ -17,6 +17,8 @@ import { FIELDS } from "../orderFields.js";
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const TAB = process.env.GOOGLE_SHEET_TAB || "Orders";
+const ORDER_FIELDS = new Set(FIELDS);
+const IMMUTABLE_FIELDS = new Set(["id", "timestamp"]);
 
 // The tab name quoted for A1 notation. Sheet names with spaces or punctuation
 // must be single-quoted (and internal quotes doubled), so build it once and use
@@ -26,6 +28,13 @@ const QTAB = `'${TAB.replace(/'/g, "''")}'`;
 export const description = `Google Sheet ${SHEET_ID} (tab "${TAB}")`;
 
 let sheetsApi;
+
+// Allow store-level tests to exercise the real Sheets request construction
+// without authenticating against Google.
+export function __setSheetsApiForTests(api) {
+  sheetsApi = api;
+  statsCache = null;
+}
 
 // Cache the pre-ordered total so /api/stats — which fires on every page load —
 // doesn't read the whole sheet on each visit (Google caps reads per minute).
@@ -63,6 +72,27 @@ async function readRows() {
   return res.data.values || [];
 }
 
+async function readHeader() {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: `${QTAB}!1:1`,
+  });
+  return (res.data.values || [])[0] || [];
+}
+
+// Convert a zero-based column index to its A1 letter (0 -> A, 26 -> AA).
+function columnLetter(index) {
+  let n = index + 1;
+  let result = "";
+  while (n > 0) {
+    n--;
+    result = String.fromCharCode(65 + (n % 26)) + result;
+    n = Math.floor(n / 26);
+  }
+  return result;
+}
+
 // Ensure the target tab exists and its first row is our header. Creates the tab
 // if it's missing and writes the header if the sheet is empty.
 export async function init() {
@@ -91,15 +121,22 @@ export async function init() {
 
 export async function appendOrder(order) {
   const sheets = await getSheets();
+  const header = await readHeader();
+  if (header.length === 0) {
+    throw new Error(`Google Sheet tab "${TAB}" has no header row`);
+  }
   // RAW + pass values through by type: numbers (quantity/price/total) land as
   // numeric cells the team can SUM, while strings (e.g. phone) stay text so
-  // leading zeros aren't lost.
+  // leading zeros aren't lost. Map against the live header so organizer column
+  // reordering cannot put order values under the wrong labels.
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
     range: QTAB,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
-    requestBody: { values: [FIELDS.map((f) => (order[f] == null ? "" : order[f]))] },
+    requestBody: {
+      values: [header.map((field) => (order[field] == null ? "" : order[field]))],
+    },
   });
   statsCache = null; // a new order changes the total
 }
@@ -116,18 +153,28 @@ export async function updateOrder(id, changes) {
 
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][idIndex] !== id) continue;
-    const existing = {};
-    header.forEach((col, j) => (existing[col] = rows[i][j]));
-    const merged = { ...existing, ...changes, id, timestamp: existing.timestamp };
-    const newRow = header.map((col) => (merged[col] == null ? "" : merged[col]));
-    // Sheet rows are 1-based and row 1 is the header, so data row i sits at i+1.
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: `${QTAB}!A${i + 1}`,
-      valueInputOption: "RAW",
-      requestBody: { values: [newRow] },
+    // Update only mutable order columns supplied by the caller. Organizer-added
+    // columns are left untouched, which preserves formulas instead of replacing
+    // their rendered values with constants.
+    const data = [];
+    header.forEach((field, columnIndex) => {
+      if (!ORDER_FIELDS.has(field) || IMMUTABLE_FIELDS.has(field)) return;
+      if (!Object.prototype.hasOwnProperty.call(changes, field)) return;
+      data.push({
+        range: `${QTAB}!${columnLetter(columnIndex)}${i + 1}`,
+        values: [[changes[field] == null ? "" : changes[field]]],
+      });
     });
-    statsCache = null; // an edited quantity may change the total
+    if (data.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: SHEET_ID,
+        requestBody: {
+          valueInputOption: "RAW",
+          data,
+        },
+      });
+      statsCache = null; // an edited quantity may change the total
+    }
     return true;
   }
   return false;
