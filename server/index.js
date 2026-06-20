@@ -102,10 +102,20 @@ if (fs.existsSync(distDir)) {
   app.get("*", (_req, res) => res.sendFile(path.join(distDir, "index.html")));
 }
 
-// Initialize storage (create the CSV/header or the sheet tab) before serving.
+// Initialize storage (create the CSV/header or the sheet tab), then serve.
+// A storage failure here (e.g. a Google Sheets misconfig) must NOT take the
+// whole site down — the informational pages should still load, and order
+// writes will surface their own errors per request. So we log and serve anyway
+// rather than exiting.
 store
   .init()
-  .then(() => {
+  .catch((err) => {
+    console.error(
+      "[startup] storage init failed — the site will still serve, but orders may not be stored until this is fixed:",
+      err.message
+    );
+  })
+  .finally(() => {
     app.listen(PORT, () => {
       console.log(`SDC order server listening on http://localhost:${PORT}`);
       console.log(`Orders are saved to: ${store.description}`);
@@ -113,8 +123,4 @@ store
         console.log('(no dist/ build found — run "npm run dev" for the site, or "npm start" to build + serve here)');
       }
     });
-  })
-  .catch((err) => {
-    console.error("[startup] storage initialization failed:", err.message);
-    process.exit(1);
   });

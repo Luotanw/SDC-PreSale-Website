@@ -18,9 +18,20 @@ import { FIELDS } from "../orderFields.js";
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 const TAB = process.env.GOOGLE_SHEET_TAB || "Orders";
 
+// The tab name quoted for A1 notation. Sheet names with spaces or punctuation
+// must be single-quoted (and internal quotes doubled), so build it once and use
+// it in every range string.
+const QTAB = `'${TAB.replace(/'/g, "''")}'`;
+
 export const description = `Google Sheet ${SHEET_ID} (tab "${TAB}")`;
 
 let sheetsApi;
+
+// Cache the pre-ordered total so /api/stats — which fires on every page load —
+// doesn't read the whole sheet on each visit (Google caps reads per minute).
+// Writes clear the cache so the count updates promptly after an order.
+const STATS_TTL_MS = 30_000;
+let statsCache = null; // { boxes, at } | null
 
 // Lazily build an authenticated Sheets client from the service-account JSON.
 async function getSheets() {
@@ -47,7 +58,7 @@ async function readRows() {
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: TAB,
+    range: QTAB,
   });
   return res.data.values || [];
 }
@@ -71,7 +82,7 @@ export async function init() {
   if (rows.length === 0) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: `${TAB}!A1`,
+      range: `${QTAB}!A1`,
       valueInputOption: "RAW",
       requestBody: { values: [FIELDS] },
     });
@@ -80,13 +91,17 @@ export async function init() {
 
 export async function appendOrder(order) {
   const sheets = await getSheets();
+  // RAW + pass values through by type: numbers (quantity/price/total) land as
+  // numeric cells the team can SUM, while strings (e.g. phone) stay text so
+  // leading zeros aren't lost.
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
-    range: TAB,
+    range: QTAB,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
-    requestBody: { values: [FIELDS.map((f) => (order[f] == null ? "" : String(order[f])))] },
+    requestBody: { values: [FIELDS.map((f) => (order[f] == null ? "" : order[f]))] },
   });
+  statsCache = null; // a new order changes the total
 }
 
 // Replace the row whose id matches, keeping its original id + timestamp.
@@ -104,29 +119,37 @@ export async function updateOrder(id, changes) {
     const existing = {};
     header.forEach((col, j) => (existing[col] = rows[i][j]));
     const merged = { ...existing, ...changes, id, timestamp: existing.timestamp };
-    const newRow = header.map((col) => (merged[col] == null ? "" : String(merged[col])));
+    const newRow = header.map((col) => (merged[col] == null ? "" : merged[col]));
     // Sheet rows are 1-based and row 1 is the header, so data row i sits at i+1.
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: `${TAB}!A${i + 1}`,
+      range: `${QTAB}!A${i + 1}`,
       valueInputOption: "RAW",
       requestBody: { values: [newRow] },
     });
+    statsCache = null; // an edited quantity may change the total
     return true;
   }
   return false;
 }
 
-// Total dozens ("boxes") pre-ordered = sum of the quantity column.
+// Total dozens ("boxes") pre-ordered = sum of the quantity column. Served from
+// a short-lived cache so bursts of page loads don't each read the whole sheet.
 export async function computeBoxesOrdered() {
-  const rows = await readRows();
-  if (rows.length <= 1) return 0; // header only (or empty)
-  const qIndex = rows[0].indexOf("quantity");
-  if (qIndex === -1) return 0;
-  let total = 0;
-  for (let i = 1; i < rows.length; i++) {
-    const n = parseInt(rows[i][qIndex], 10);
-    if (!Number.isNaN(n)) total += n;
+  if (statsCache && Date.now() - statsCache.at < STATS_TTL_MS) {
+    return statsCache.boxes;
   }
+  const rows = await readRows();
+  let total = 0;
+  if (rows.length > 1) {
+    const qIndex = rows[0].indexOf("quantity");
+    if (qIndex !== -1) {
+      for (let i = 1; i < rows.length; i++) {
+        const n = parseInt(rows[i][qIndex], 10);
+        if (!Number.isNaN(n)) total += n;
+      }
+    }
+  }
+  statsCache = { boxes: total, at: Date.now() };
   return total;
 }
