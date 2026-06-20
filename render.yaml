@@ -1,23 +1,25 @@
 # Render Blueprint for the SDC Donut Presale site.
-# One Node web service that builds the React frontend and serves it together
-# with the order API (server/index.js). Orders are written to a CSV on a
-# persistent disk so they survive restarts and redeploys.
+# One free Node web service that builds the React frontend and serves it
+# together with the order API (server/index.js). Orders are stored in a Google
+# Sheet you own, so they persist without a paid disk.
 #
 # Deploy: push this repo to GitHub, then in Render choose
-# "New > Blueprint" and point it at the repo.
+# "New > Blueprint" and point it at the repo. After it's created, set the two
+# secret env vars below in the Render dashboard (Environment tab).
 services:
   - type: web
     name: sdc-donut-presale
     runtime: node
-    # A persistent disk requires a paid instance type (free tier has no disk).
-    plan: starter
+    plan: free
     buildCommand: npm install && npm run build
     startCommand: node server/index.js
     envVars:
-      # Save orders onto the persistent disk, not the ephemeral container fs.
-      - key: ORDERS_CSV
-        value: /var/data/orders.csv
-    disk:
-      name: orders-data
-      mountPath: /var/data
-      sizeGB: 1
+      # The spreadsheet id (the long token in the sheet's URL).
+      - key: GOOGLE_SHEET_ID
+        sync: false
+      # The full service-account JSON key, pasted as one value.
+      - key: GOOGLE_CREDENTIALS
+        sync: false
+      # Worksheet/tab the orders are written to.
+      - key: GOOGLE_SHEET_TAB
+        value: Orders
