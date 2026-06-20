@@ -28,7 +28,60 @@ const QTAB = `'${TAB.replace(/'/g, "''")}'`;
 
 export const description = `Google Sheets tab "${TAB}"`;
 
+// Thrown for problems that will never fix themselves on a retry — missing/bad
+// credentials, a revoked key, the sheet not shared or not found. Carrying
+// `fatal` lets the startup code fail the deploy loudly instead of booting into
+// a state where every order silently 500s.
+export class StorageConfigError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "StorageConfigError";
+    this.fatal = true;
+  }
+}
+
 let sheetsApi;
+// The signing identity from the parsed credentials, kept so auth failures can
+// name the account whose key needs fixing.
+let clientEmail = null;
+
+// Map a low-level Google/Gaxios error to a clear, actionable error. Auth and
+// permission/lookup problems are fatal (a human must fix config); network,
+// rate-limit (429) and 5xx blips are transient and left unflagged so the server
+// can boot and retry on real traffic.
+function classifyGoogleError(error) {
+  const status = error?.response?.status ?? error?.code;
+  const data = error?.response?.data || {};
+  const reason =
+    data.error_description || data.error?.message || data.error || error?.message || "unknown error";
+  const who = clientEmail || "the service account";
+
+  if (data.error === "invalid_grant" || /invalid jwt|invalid_grant/i.test(String(reason))) {
+    return new StorageConfigError(
+      `Google rejected the service-account key (${reason}). The private_key in ` +
+        `GOOGLE_CREDENTIALS is valid but does not match the active key for ${who}. ` +
+        `Generate a fresh JSON key for that account, replace GOOGLE_CREDENTIALS, and redeploy.`
+    );
+  }
+  if (status === 401) {
+    return new StorageConfigError(`Google rejected the credentials (401): ${reason}.`);
+  }
+  if (status === 403) {
+    return new StorageConfigError(
+      `Google denied access to the sheet (403): ${reason}. Share the spreadsheet with ` +
+        `${who} as Editor, and make sure the Google Sheets API is enabled for its project.`
+    );
+  }
+  if (status === 404) {
+    return new StorageConfigError(
+      `Spreadsheet "${SHEET_ID}" was not found (404). Check that GOOGLE_SHEET_ID is correct.`
+    );
+  }
+  // Transient — surface the cause but don't mark fatal.
+  const transient = new Error(`Google Sheets request failed: ${reason}`);
+  transient.cause = error;
+  return transient;
+}
 
 // Allow store-level tests to exercise the real Sheets request construction
 // without authenticating against Google.
@@ -47,14 +100,20 @@ let statsCache = null; // { boxes, at } | null
 async function getSheets() {
   if (sheetsApi) return sheetsApi;
   if (!process.env.GOOGLE_CREDENTIALS) {
-    throw new Error("GOOGLE_CREDENTIALS is not set");
+    throw new StorageConfigError("GOOGLE_CREDENTIALS is not set");
   }
   let credentials;
   try {
     credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
   } catch {
-    throw new Error("GOOGLE_CREDENTIALS is not valid JSON");
+    throw new StorageConfigError("GOOGLE_CREDENTIALS is not valid JSON");
   }
+  if (!credentials.client_email || !credentials.private_key) {
+    throw new StorageConfigError(
+      "GOOGLE_CREDENTIALS is missing client_email or private_key — paste the full service-account JSON key"
+    );
+  }
+  clientEmail = credentials.client_email;
   const auth = new google.auth.GoogleAuth({
     credentials,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -97,26 +156,34 @@ function columnLetter(index) {
 // Ensure the target tab exists and its first row is our header. Creates the tab
 // if it's missing and writes the header if the sheet is empty.
 export async function init() {
-  if (!SHEET_ID) throw new Error("GOOGLE_SHEET_ID is not set");
+  if (!SHEET_ID) throw new StorageConfigError("GOOGLE_SHEET_ID is not set");
   const sheets = await getSheets();
 
-  const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
-  const exists = (meta.data.sheets || []).some((s) => s.properties.title === TAB);
-  if (!exists) {
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SHEET_ID,
-      requestBody: { requests: [{ addSheet: { properties: { title: TAB } } }] },
-    });
-  }
+  // The first authenticated call here doubles as a boot-time auth probe: a bad
+  // key or unshared sheet fails now, with a clear cause, instead of silently
+  // 500ing later. Re-throw config errors as-is; classify raw Google errors.
+  try {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
+    const exists = (meta.data.sheets || []).some((s) => s.properties.title === TAB);
+    if (!exists) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SHEET_ID,
+        requestBody: { requests: [{ addSheet: { properties: { title: TAB } } }] },
+      });
+    }
 
-  const rows = await readRows();
-  if (rows.length === 0) {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID,
-      range: `${QTAB}!A1`,
-      valueInputOption: "RAW",
-      requestBody: { values: [FIELDS] },
-    });
+    const rows = await readRows();
+    if (rows.length === 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `${QTAB}!A1`,
+        valueInputOption: "RAW",
+        requestBody: { values: [FIELDS] },
+      });
+    }
+  } catch (error) {
+    if (error instanceof StorageConfigError) throw error;
+    throw classifyGoogleError(error);
   }
 }
 
