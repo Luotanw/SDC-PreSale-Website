@@ -37,7 +37,14 @@ export function PickupPayment() {
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             {detail("calendar-check", "Date", "Sunday, June 21, 2026")}
             {detail("clock", "Time window", "10:00 AM – 4:00 PM")}
-            {detail("map-pin", "Location", "SDC Community Hub · add full address")}
+            {detail("map-pin", "Location", (
+              <>
+                Save On Foods (Garden City)
+                <span style={{ display: "block", fontWeight: 500, fontSize: "var(--text-sm)", color: "rgba(255,255,255,0.75)", marginTop: "2px" }}>
+                  9100 Blundell Rd, Richmond, BC V6Y 2R1
+                </span>
+              </>
+            ))}
           </div>
           <p style={{ fontSize: "var(--text-sm)", color: "rgba(255,255,255,0.75)", marginTop: "22px", lineHeight: "var(--leading-normal)" }}>
             We'll email your exact pickup slot after you reserve. Can't make it? Reply to that email and we'll sort it out.
